@@ -1,0 +1,188 @@
+---
+title: "Time Series Graphics"
+format: html
+---
+
+```{r}
+# Load Forecasting: Principles and Practical (3rd Edition) libraries and datasets
+library(fpp3)
+
+library(readr)
+```
+
+Plots are useful for identifying:
+
+* Patterns
+
+* Unusual observations
+
+* Changes over time
+
+* Relationships between variables
+
+# Time Plots
+
+Let's return to the Australian pharmaceutical data we prepared previously.
+
+```{r}
+PBS |>
+  filter(ATC2 == "A10") |> # filter rows to show only drugs with ATC2 group 10 
+  select(Month, Concession, Type, Cost) |> # select columns we want
+  summarise(TotalC = sum(Cost)) |> # summarise using a total (sum)
+  mutate(Cost = TotalC / 1e6) -> a10 # create a new variable
+```
+
+Here we use `autoplot` from the `fabletools` package to plot a time series plot.
+
+This uses `ggplot2` in the backend, and produces by default a time series plot.
+
+We pass the variable we want to plot. Here, the measured variable we want to predict: `Cost`.
+
+```{r}
+a10 |>
+  autoplot(Cost) +
+  labs(y = "$ (millions)", 
+       title = "Australian antidiabetic drug sales")
+
+```
+Remember this dataset contains Monthly `[1M]` observations of total cost of pharmaceuticals.
+
+`autoplot()` automatically detects the time column and puts the time period, here monthly (`[1M]`) onto the x-axis.
+
+```{r}
+a10
+```
+
+Let's compare this time series plot made with `autoplot()` to a `ggplot()` scatterplot:
+
+```{r}
+a10 |>
+  ggplot(aes(x=Month, y=Cost)) +
+  geom_point()
+```
+
+The scatterplot only shows points - hence `geom_point()` - but to see patterns in the data, we need the points to be connected with a line:
+
+```{r}
+a10 |>
+  ggplot(aes(x=Month, y=Cost)) +
+  geom_line()
+```
+
+Under the hood, `autoplot()` gives the same as the `geom_line` of `ggplot2`:
+
+```{r}
+a10 |> autoplot(Cost)
+```
+
+It can be really useful to plot the points as well as the line:
+
+```{r}
+a10 |> autoplot(Cost) + geom_point()
+```
+
+This can help us to see specific points, such as the peaks of lines, and notice patterns easier.
+
+```{r}
+a10 |> autoplot(Cost) +
+  geom_point() +
+  labs(title = "Antidiabetic drug sales",
+       y = "$ million")
+```
+
+We look at the plot to notice any patterns.
+
+Here, we notice **spikes** happening on a regular basis. This is a **seasonal** pattern.
+
+The spikes are followed by a **trough** repeatedly after the peak.
+
+There's also a **trend** in the data: the data is increasing upwards, but not in a linear way. The trend is **non-linear**.
+
+The difference between spikes and troughs increases as time proceeds. The difference between spike and trough is much larger at the end of the sample than at the beginning.
+
+This is a multiplicative effect: the amplitude between high and low points increases as the temporality extends.
+
+# Airline Passenger Numbers
+
+This dataset provides a `tsibble` of passenger numbers for the Ansett airline.
+
+The data features a major pilots' industrial dispute, which results in some weeks having zero passengers.
+
+There were also changes in the definitions of passenger classes.
+
+```{r}
+ansett
+```
+
+This is a `tsibble` object with `7407` rows, `4` columns, with time series at weekly (`[1W]`) intervals. There are two Keys which are `Airports` and `Class` with `30` unique time series (that is, the unique relations created by the Keys, i.e. `Airports x Class` results in `30` unique combinations). Notice that the keys are categorical (character `<chr>`) data types. There is one measured variable, or outcome variable, which we want to forecast: `Passengers`. Notice `Week`, which is the time series index column, is weekly `<S3: yearweek>`.
+
+```{r}
+ansett |>
+  autoplot(Passengers)
+```
+
+Notice how `autoplot()` makes decisions about what to plot. Here, it uses colour to distinguish `Airports-Class` groupings.
+
+You might not want the plot to look like the automatic default plot. In this case, I guess, you could just built it using `ggplot()`.
+
+The plot is very messy, due to the number of `Airports-Class` relations. So, let's look at how many classes or factors are in the variables, using the `distinct()` function. Here, we pass the variable `Class` to `distinct()`, and find there are 3 distinct classes: `Business`, `Economy`, `First`.
+
+```{r}
+ansett |> distinct(Class)
+```
+Let's do the same for the `Airports` variable, where we find there are `10` combinations (rows). Hence, `30` unique time series, because $30 * 3 = 30$.
+
+```{r}
+ansett |> distinct(Airports)
+```
+
+Let's further explore the dataset by filtering by `Economy` class, using the `filter()` function. `filter()` filters rows based on a condition, similar to the SQL `WHERE` clause.
+
+```{r}
+ansett |>
+  filter(Class == "Economy") |>
+  autoplot()
+```
+
+
+Let's look at a specific route:
+
+```{r}
+melsyd_economy <- ansett |>
+  filter(Airports == "MEL-SYD") |>
+  select(-Airports)
+```
+
+```{r}
+melsyd_economy
+```
+
+```{r}
+melsyd_economy |> autoplot() + labs(title = "Passengers on Melbourne-Sydney Route")
+```
+
+This plot shows us `3` time series according to passenger `Class`.
+
+We notice the zero entries, due to the pilot strike.
+
+Also you can see a strange pattern in 1992 where `Economy` passengers drop and `Business` passengers increase. This is due to passenger `Class` being reassigned.
+
+
+```{r}
+melsyd_economy |>
+  filter(Class == "Economy") |>
+  mutate(Passengers = Passengers / 1000) |> # recale the variable into more accessible form
+  autoplot(Passengers) +
+  labs(title = "Ansett Airlines Economy Class Passengers",
+       subtitle = "Melbourne-Sydney Route",
+       y = "Passengers ('000)")
+```
+
+We can notice the zero passengers towards the end of 1989 (the strke), the dip in passengers in mid-1992, and the troughs at the end of each year. This is the week that contains Christmas. On Christmas Day, no flights were happening.
+
+There are spikes, which could be due to various events in Australia (e.g. sports).
+
+
+
+
+

@@ -1,0 +1,204 @@
+# `tsibble` objects
+
+`tsibble` object is a `tibble` for tidy temporal data or time series.
+`feasts` is Feature Extraction and Statistics for Time Series.
+`fable` is Forecasting Models for Tidy Time Series (e.g. ETS, Exponential Smoothing, ARIMA, Autoregressive Integrated Moving Average)
+`fabletools` is Core Tools for Packages in the `fable` framework (tidy time series modelling and analysis).
+
+## Install Packages
+```{r}
+install.packages("fpp3")
+install.packages("readr")
+install.packages("rmarkdown")
+```
+
+## Load Packages
+```{r}
+# Load Forecasting: Principles and Practical (3rd Edition) libraries and datasets
+library(fpp3)
+
+library(readr)
+```
+
+# Global Economy Dataset
+
+The `global_economy` dataset is a `tsibble` object, with `15150` rows (observations) and `9` columns. 
+
+`Code`, `Growth` and `CPI` have been added since the lecture series was recorded.
+
+`[1Y]` means the observations are 1 year apart (could be a month or 3 months apart).
+
+`Key` variable is `Country` with `263` countries in dataset. There are `263` separate time series in this dataset. `263` unique combinations (i.e. distinct countries with their respective measurement variables).
+
+`Year` should be the `Index` of the time series, but for me, this is not the case.
+
+There should be an `Index` (`Year`), a `Key` (`Country`) - which determines the unique time series (here, `263`), and the remaining variables are **Measured** variables - individual variables we wish to model (the `y` variables in our equation).
+
+```{r}
+global_economy
+```
+
+```{r}
+tourism
+```
+
+The `tourism` dataset is a `tsibble` of `24320` rows (observations), `5` columns, at `1Q` intervals.
+
+It shows domestic visitor nights (`Trips`) in Australia in thousands by `State`, `Region` and `Purpose`.
+
+There are 3 `Key` variables: `Region`, `State`, `Purpose` with `304` unique combinations (`304` time series). The `Key` variables are our time series.
+
+I guess `Quarter` (`qtr`) should be the `Index`, which gives quarters (e.g. `1998 Q1` is first quarter of 1998).
+
+The `Index` should be the timing of the observation (e.g. `Year`, `Quarter`, `Month`) - i.e., the `x` variable.
+
+The measured variable is `Trips` - this is the variable we want to model (the `y` variable in our equation).
+
+# Making a `tsibble`
+
+Use `tsibble()`:
+```{r}
+mydata <- tsibble(
+    year = 2015:2019,
+    y = c(123, 39, 78, 52, 110),
+    index = year # allocate the year
+)
+mydata
+```
+Notice that `tsibble` automatically tries to allocate a temporal dimension to the `tsibble`. In this case, `[1Y]` means the `Index` records `year` values at intervals of 1 year.
+
+Or turn a `tibble` into a `tsibble` with `as_tibble()`:
+```{r}
+mydata <- tibble(
+    year = 2015:2019,
+    y = c(123, 39, 78, 52, 110)
+) |>
+    as_tsibble(index=year) # give the tsibble an index
+mydata
+```
+
+For example, you could load a `.csv` file with `read_csv` from `dplyr`, then turn your `tibble` into a `tsibble`.
+
+We might need to transform our date column from a string (`<chr>`) to a date data type, with the `yearmonth()` function, here using `mutate()`:
+
+```{r}
+z |>
+    mutate(Month = yearmonth(Month)) |>
+    as_tsibble(index = Month)
+```
+
+This will change the `Month` variable from a character to a `<mth>` variable.
+
+Then the `tsibble` object will know the data observations are recorded at monthly intervals (`[1M]`).
+
+# Importing CSV as `tibble`, transform to `tsibble`
+
+## Australian Prison Population Dataset
+
+Let's read a `tibble` from a `.csv` file.
+```{r}
+prison <- readr::read_csv("https://raw.githubusercontent.com/robjhyndman/ETC3550Slides/3b0fac71d7d2e8cad7e4134c62b16ab1ece1934e/data/prison_population.csv")
+```
+
+```{r}
+prison
+```
+
+The columns should automatically be understood as data types:
+
+`date` (`date`)
+`chr` (`state`, `gender`, `legal`, `indigenous`)
+`dbl` (`count`)
+
+We need to check the values in the `date` column to see how time is being recorded.
+
+We see the dates are actually **quarterly** time series.
+
+So let's create a new variable, `Quarter`, which is the data type `qtr`.
+```{r}
+prison |>
+    mutate(Quarter = yearquarter(date))
+```
+
+Now, remove the `date` variable.
+
+Then, turn the `tibble` into a `tsibble`.
+
+```{r}
+prison <- readr::read_csv("https://raw.githubusercontent.com/robjhyndman/ETC3550Slides/3b0fac71d7d2e8cad7e4134c62b16ab1ece1934e/data/prison_population.csv") |>
+    mutate(Quarter = yearquarter(date)) |>
+    select(-date) |>
+    as_tsibble(
+        index = Quarter,
+        key = c(state, gender, legal, indigenous)
+    )
+```
+
+```{r}
+prison
+```
+
+There are `64` time series: unique different series in this dataset. This is the number of unique combinations of the time Index, in this case `Quarter`, and the Keys, here `state`, `gender`, `legal`, `indigenous`.
+
+## Australian Pharmaceutical Benefits
+
+```{r}
+PBS
+```
+This is a `tsibble` object with `67_596` rows and `9` columns.
+
+The time value is `Month` (`<S3: yearmonth>`), indicated by the monthly `[1M]` descriptor, and there are 4 Keys: `Concession`, `Type`, `ATC1`, `ATC2` with `336` unique time series.
+
+There are two measured variables, which we want to predict: `Scripts` and `Cost`.
+
+To analyse the dataset, we need to filter and group:
+
+```{r}
+PBS |>
+  filter(ATC2 == "A10") # filter rows to show only drugs with ATC2 group 10
+```
+
+After the filtering, this results in `816` rows, `4` columns, and `4` unique time series.
+
+Then, select the columns we want:
+
+```{r}
+PBS |>
+  filter(ATC2 == "A10") |> # filter rows to show only drugs with ATC2 group 10 
+  select(Month, Concession, Type, Cost)
+```
+
+Then we use `summarise()` to summarise over keys. Here, the total cost, using `sum()`.
+
+We don't have to group by month, as you would usually do, as the data is already grouped by month.
+
+```{r}
+PBS |>
+  filter(ATC2 == "A10") |> # filter rows to show only drugs with ATC2 group 10 
+  select(Month, Concession, Type, Cost) |>
+  summarise(TotalC = sum(Cost))
+```
+
+Now we have a `tsibble` with `204` rows, `2` columns, at monthly (`[1M]`) intervals.
+
+The cost is difficult to read, so we will `mutate()` the cost to millions of Australian dollars, creating a new variable, `Cost`, as millions of dollars:
+
+```{r}
+PBS |>
+  filter(ATC2 == "A10") |> # filter rows to show only drugs with ATC2 group 10 
+  select(Month, Concession, Type, Cost) |>
+  summarise(TotalC = sum(Cost)) |>
+  mutate(Cost = TotalC / 1e6)
+```
+
+Finally, we save the `tsibble` using the right assignment operator `->` which functions the same as the left assignment operator `<-` to store the `tsibble` as a variable:
+
+```{r}
+PBS |>
+  filter(ATC2 == "A10") |> # filter rows to show only drugs with ATC2 group 10 
+  select(Month, Concession, Type, Cost) |>
+  summarise(TotalC = sum(Cost)) |>
+  mutate(Cost = TotalC / 1e6) -> a10
+```
+
+In summary, a `tsibble` object requires an Index column, and Keys which uniquely define each time series. The remainder columns are measured columns, the outcome(s) we want to forecast.

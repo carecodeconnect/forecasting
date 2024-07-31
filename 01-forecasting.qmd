@@ -1,0 +1,71 @@
+# Forecasting
+
+When we forecast, we try to predict the future, which is unknown
+
+We can think of the future as consisting of random variables
+
+The "thing to forecast" is a random variable: $y_t$
+
+So, forecasting is **predicting the probability distributions of random variables**
+
+Especially when we have multiple prior observations to base our predictions on
+
+A forecast is an **estimate of the probabilities of possible futures**
+
+We use models to simulate possible futures
+
+We could predict many possible future scenarios, then average the different predictions, with intervals (showing standard deviation from mean). So, we can forecast a whole probability distribution, using the mean (a point forecast, because it uses one number), with some prediction intervals, which contain a certain percentage of future values (e.g. ETS model)
+
+We get measurements of **likelihood** of our predictions
+
+The problem is that we use data from the past to predict the future, which presumes that the drivers of the past patterns will continue to the future
+
+Predicting the future is inherently uncertain, so we need a measure of uncertainty, or likelihood, or probability, along with our predictions
+
+# Definitions
+
+**Trend**: pattern exists when there is a long-term increase or decrease in data.
+
+**Seasonal**: pattern exists when a series is influenced by seasonal factors (e.g. quarter of year, month, day of week).
+
+**Cyclic**: pattern exists when data exhibit rises and falls that are *not of fixed period* (duration usually of at least 2 years). For example, business cycle. Growth followed by bust.
+
+**Time Series**: $Y_t|t-1 = Y_t|{Y_1, Y_2, \dots, Y_t-1}$. The equation between ${$ and $}$ is the information set $I_t$. So, the probability distribution ($Y_t|t-1$) equals the time series.
+
+**Forecast distribution**: $I$ is the information set, of all previous observation, i.e. "what we know". $y_t | I$ is the random variable given what we know in $I$. The information conditions our random variable $y$ across the time series measure ($t$).
+
+**Point forecast**: the mean (or median) of the probability distribution $y_t | I$. "Point" because we are predicting a single value (e.g. mean or median, usually mean).
+
+**Prediction intervals**: contain a certain percentage estimate of future values (e.g. 50%, 90%)
+
+**Forecast variance**: is how much the forecast varies: $var[y_t|I]$ (e.g. 90% under curve).
+
+**$I$**: Information set: what we know about the past.
+
+**$y_t$**: thing to be forecast, the variable of interest; a random variable. $_t$ is time period in the future (e.g. month). $y$ is what we're trying to predict (e.g. tourist visitors).
+
+**h-step forecast**: a series of observations, taking into account all observations up to time $T$. $\hat{y}_{T+h|T} = E[Y_{T_h} \mid Y_1, \dots, Y_T]$. $T$ is total number of observations. We're forecasting a series of steps ahead, $h$ step-ahead forecast. The average is the point forecast, rather than whole distribution forecast, indicated by the y hat: $\hat{y}$.
+
+**`tsibble`**: a tidy time series object, based on `tibble`, containing:
+
+* index (time information about observation); 
+
+* measured variable(s): numbers of interest; 
+
+* key variable(s): optional unique identifiers of each series.
+
+**Time Index Variables**: common time index variables can be created with the following functions:
+
+`yearquarter()`: quarterly
+`yearmonth()`: monthly
+`yearweek()`: weekly
+`as_date()`, `ymd()`: daily
+`as_datetime()`: sub-daily
+
+# Forecasting Models
+
+## ETS
+
+# Questions
+
+Is statistical forecasting a form of Bayesian statistics? Because it involves prediction, using beliefs based on previous observations?
